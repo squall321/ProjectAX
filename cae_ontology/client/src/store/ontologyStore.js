@@ -25,8 +25,8 @@ export const useOntologyStore = create((set, get) => ({
     if (window.__CAE_STATIC_DATA__) {
       const data = window.__CAE_STATIC_DATA__;
       // Filter nodes and links dynamically based on requested product
-      const filteredNodes = data.nodes.filter(n => n.product_id === pid || n.product_id === 'global');
-      const filteredLinks = data.links.filter(l => 
+      const filteredNodes = !pid ? data.nodes : data.nodes.filter(n => n.product_id === pid || n.product_id === 'global' || !n.product_id);
+      const filteredLinks = !pid ? data.links : data.links.filter(l => 
         filteredNodes.some(n => n.node_id === l.source) && 
         filteredNodes.some(n => n.node_id === l.target)
       );
