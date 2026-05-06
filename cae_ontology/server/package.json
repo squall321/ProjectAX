@@ -1,0 +1,17 @@
+{
+  "name": "cae-ontology-server",
+  "version": "1.0.0",
+  "description": "CAE Ontology Management System — Backend API",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "pg": "^8.13.0",
+    "socket.io": "^4.7.5"
+  }
+}
