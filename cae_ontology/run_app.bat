@@ -23,7 +23,7 @@ echo.
 
 :: 3. Start Server
 echo [INFO] 기존 실행 중인 서버가 있는지 확인하고 포트를 초기화합니다...
-call npx --yes kill-port 4000 >nul 2>nul
+powershell -Command "try { Get-NetTCPConnection -LocalPort 4000 -ErrorAction Stop | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } } catch {}" >nul 2>nul
 
 echo [INFO] 서버를 시작합니다...
 cd /d "%~dp0server"

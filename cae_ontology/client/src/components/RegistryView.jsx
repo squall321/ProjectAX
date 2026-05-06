@@ -18,6 +18,11 @@ export default function RegistryView() {
 
   const fetchFormats = () => {
     setLoading(true);
+    if (window.__CAE_STATIC_DATA__) {
+      setFormats(window.__CAE_STATIC_DATA__.registry || []);
+      setLoading(false);
+      return;
+    }
     fetch('/api/registry')
       .then(r => r.json())
       .then(d => setFormats(d.formats || []))
@@ -67,6 +72,12 @@ export default function RegistryView() {
     setMessage(null);
 
     try {
+      if (window.__CAE_STATIC_DATA__) {
+        setMessage({ type: 'error', text: '오프라인 앱에서는 포맷 추가/수정이 불가능합니다.' });
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch('/api/registry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

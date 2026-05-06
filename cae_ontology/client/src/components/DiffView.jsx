@@ -10,6 +10,10 @@ export default function DiffView() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (window.__CAE_STATIC_DATA__) {
+      setProducts(window.__CAE_STATIC_DATA__.products || []);
+      return;
+    }
     fetch('/api/products').then(r => r.json()).then(setProducts);
   }, []);
 
@@ -18,6 +22,9 @@ export default function DiffView() {
     setLoading(true);
     setError(null);
     try {
+      if (window.__CAE_STATIC_DATA__) {
+        throw new Error('오프라인 환경에서는 실시간 비교 기능을 지원하지 않습니다.');
+      }
       const res = await fetch(`/api/diff?a=${prodA}&b=${prodB}`);
       if (!res.ok) throw new Error('Diff 실패');
       setDiff(await res.json());
