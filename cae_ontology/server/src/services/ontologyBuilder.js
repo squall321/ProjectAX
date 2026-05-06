@@ -24,6 +24,7 @@ async function buildOntology(productId) {
   const warnings = [];
   const links = [];
   const linkSet = new Set(); // 중복 방지: "source->target"
+  const extraNodes = []; // 연결되지 않은 I/O를 시각화하기 위한 추가 데이터 노드
 
   // 2. Outputs 기반 Edge 생성
   rawNodes.forEach(node => {
@@ -34,24 +35,41 @@ async function buildOntology(productId) {
         warnings.push(`[${node.node_id}] 미등록 포맷 참조: ${output.format_id}`);
       }
 
-      const targets = Array.isArray(output.target_node) ? output.target_node : [output.target_node];
-      targets.forEach(target => {
-        if (!target) return;
-        if (!nodeIds.has(target)) {
-          warnings.push(`[${node.node_id}] 존재하지 않는 target_node 참조: ${target}`);
-          return;
-        }
-        const key = `${node.node_id}->${target}`;
-        if (!linkSet.has(key)) {
-          linkSet.add(key);
-          links.push({
-            source: node.node_id,
-            target: target,
-            label: output.name || '',
-            format_id: output.format_id || null
-          });
-        }
-      });
+      let targets = Array.isArray(output.target_node) ? output.target_node : [output.target_node];
+      targets = targets.filter(t => t);
+
+      if (targets.length === 0) {
+        // 연결되지 않은 최종 Output (단말 데이터)
+        const dataNodeId = `ext_out_${node.node_id}_${output.data_id}`;
+        extraNodes.push({
+          node_id: dataNodeId,
+          meta: { type: 'data', name: output.name, description: `포맷: ${output.format_id || '없음'}` },
+          inputs: [], processes: [], outputs: []
+        });
+        links.push({
+          source: node.node_id,
+          target: dataNodeId,
+          label: '최종 산출물',
+          format_id: output.format_id || null
+        });
+      } else {
+        targets.forEach(target => {
+          if (!nodeIds.has(target)) {
+            warnings.push(`[${node.node_id}] 존재하지 않는 target_node 참조: ${target}`);
+            return;
+          }
+          const key = `${node.node_id}->${target}`;
+          if (!linkSet.has(key)) {
+            linkSet.add(key);
+            links.push({
+              source: node.node_id,
+              target: target,
+              label: output.name || '',
+              format_id: output.format_id || null
+            });
+          }
+        });
+      }
     });
   });
 
@@ -64,7 +82,23 @@ async function buildOntology(productId) {
       }
 
       const source = input.source_node;
-      if (!source) return;
+      if (!source) {
+        // 연결되지 않은 외부 Input (외부 데이터)
+        const dataNodeId = `ext_in_${node.node_id}_${input.data_id}`;
+        extraNodes.push({
+          node_id: dataNodeId,
+          meta: { type: 'data', name: input.name, description: `포맷: ${input.format_id || '없음'}` },
+          inputs: [], processes: [], outputs: []
+        });
+        links.push({
+          source: dataNodeId,
+          target: node.node_id,
+          label: '외부 데이터',
+          format_id: input.format_id || null
+        });
+        return;
+      }
+
       if (!nodeIds.has(source)) {
         warnings.push(`[${node.node_id}] 존재하지 않는 source_node 참조: ${source}`);
         return;
@@ -102,7 +136,8 @@ async function buildOntology(productId) {
   });
 
   // 5. 노드 포맷 변환 (프론트엔드용, 좌표 0,0)
-  const nodes = rawNodes.map(n => {
+  const allNodes = [...rawNodes, ...extraNodes];
+  const nodes = allNodes.map(n => {
     const inputNames = (n.inputs || []).map(i => i.name);
     const processNames = (n.processes || []).map(p => p.name);
     const outputNames = (n.outputs || []).map(o => o.name);

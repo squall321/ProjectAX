@@ -19,6 +19,13 @@
 .type-component { border-top: 4px solid #f43f5e; }
 .type-thread    { border-top: 4px solid #34d399; }
 .type-insight   { border-top: 4px solid #60a5fa; }
+.type-data {
+  border-top: 4px solid #fbbf24;
+  border-radius: 20px;
+  background: rgba(251, 191, 36, 0.1);
+  min-height: auto;
+  padding: 10px 14px;
+}
 .type-core {
   background: rgba(30, 20, 48, 0.8);
   border: 1px solid rgba(192, 132, 252, 0.4);
