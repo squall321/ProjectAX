@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 TITLE CAE Ontology Management System - Launcher
 SETLOCAL
 
