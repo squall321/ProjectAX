@@ -11,7 +11,6 @@ INSERT INTO schema_registry (format_id, name, data_class, file_types, embedded_s
   ('fmt_mcad_model',      'MCAD 모델',            'binary_link', ARRAY['.stp','.step','.igs'], '{"file_path":"string"}', '기구 설계 산출 3D 형상 데이터'),
   ('fmt_ecad_model',      'ECAD 모델',              'binary_link', ARRAY['.brd','.mcm'],         '{"file_path":"string"}', '실장솔루션 전자 CAD 설계 데이터'),
   ('fmt_lsdyna_k',        'LS-DYNA K파일',          'binary_link', ARRAY['.k','.key'],           '{"file_path":"string"}', '세트 구조강성 해석용 솔버 입력 파일'),
-  ('fmt_stiffness_model', '세트 강성 모델',          'binary_link', ARRAY['.k','.key'],           NULL, '세트 전체 강성 해석 모델'),
   ('fmt_strain_result',   '변형률 결과',             'embedded',    NULL, '{"pba_strain":"number","package_strain":"number","interposer_strain":"number"}', '낙하/충격 해석 산출 PBA 변형률'),
   ('fmt_sed_result',      'SED (Strain Energy Density)', 'embedded', NULL, '{"sed_value":"number","target_criteria":"string","pass_fail":"string"}', '열충격 해석 산출 변형에너지밀도'),
   ('fmt_ballmap_stackup', '볼맵/스택업/두께 정보',    'embedded',    NULL, '{"ball_count":"number","stackup_layers":"number","total_thickness_mm":"number"}', '실장솔루션 PBA 구조 파라미터'),
@@ -42,7 +41,7 @@ INSERT INTO nodes (node_id, product_id, meta, inputs, processes, outputs) VALUES
  '{"name":"세트 CAE (구조강성)","type":"core","owner":"CAE 그룹","description":"구조강성 파트 전처리 단계"}',
  '[{"data_id":"in_cad","name":"MCAD 모델","format_id":"fmt_mcad_model","source_node":"task_cad","is_mandatory":true,"parameters":{"file_path":"\\\\NAS\\Design\\MCAD\\latest_model.stp"}},{"data_id":"in_ecae","name":"ECAD 모델","format_id":"fmt_ecad_model","source_node":"task_mnt","is_mandatory":true,"parameters":{"file_path":"\\\\NAS\\Design\\ECAD\\latest_board.brd"}}]',
  '[{"step_id":"p1","name":"모델링 단순화","metrics":{}},{"step_id":"p2","name":"물성 부여","metrics":{}}]',
- '[{"data_id":"out_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","target_node":["task_drop_sim","task_partial_impact"],"sla_days":7,"parameters":{"file_path":"\\\\HPC\\CAE\\Solver\\model.k"}},{"data_id":"out_stiffness","name":"세트 강성 모델","format_id":"fmt_stiffness_model","target_node":["task_ai_aponoff","task_ai_cap"],"sla_days":7,"parameters":{}}]'
+ '[{"data_id":"out_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","target_node":["task_drop_sim","task_partial_impact","task_ai_aponoff","task_ai_cap"],"sla_days":7,"parameters":{"file_path":"\\\\HPC\\CAE\\Solver\\model.k"}}]'
 ),
 
 -- 4. 낙하 시뮬레이션
@@ -72,7 +71,7 @@ INSERT INTO nodes (node_id, product_id, meta, inputs, processes, outputs) VALUES
 -- 7. AP on/off 시뮬레이션
 ('task_ai_aponoff', 'global',
  '{"name":"AP on/off 시뮬레이션","type":"thread","owner":"디지털트윈 AI 파트","description":"디지털트윈 AI 파트: 발열/구조 융합 해석"}',
- '[{"data_id":"in_stiffness","name":"세트 강성 모델","format_id":"fmt_stiffness_model","source_node":"task_cae_stiffness","is_mandatory":true,"parameters":{}},{"data_id":"in_ballmap","name":"볼맵/스택업/두께","format_id":"fmt_ballmap_stackup","source_node":"task_mnt","is_mandatory":true,"parameters":{}}]',
+ '[{"data_id":"in_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","source_node":"task_cae_stiffness","is_mandatory":true,"parameters":{"file_path":"\\\\HPC\\CAE\\Solver\\model.k"}},{"data_id":"in_ballmap","name":"볼맵/스택업/두께","format_id":"fmt_ballmap_stackup","source_node":"task_mnt","is_mandatory":true,"parameters":{}}]',
  '[]',
  '[{"data_id":"out_ap","name":"AP 동작 변형 피드백","format_id":"fmt_strain_result","target_node":"task_hw","sla_days":3,"parameters":{}}]'
 ),
@@ -80,7 +79,7 @@ INSERT INTO nodes (node_id, product_id, meta, inputs, processes, outputs) VALUES
 -- 8. Cap 떨림 시뮬레이션
 ('task_ai_cap', 'global',
  '{"name":"Cap 떨림 시뮬레이션","type":"thread","owner":"디지털트윈 AI 파트","description":"디지털트윈 AI 파트: Acoustic Noise"}',
- '[{"data_id":"in_stiffness","name":"세트 강성 모델","format_id":"fmt_stiffness_model","source_node":"task_cae_stiffness","is_mandatory":true,"parameters":{}},{"data_id":"in_cap_scenario","name":"Cap 정보 및 시나리오","format_id":"fmt_cap_scenario","source_node":"task_hw","is_mandatory":true,"parameters":{}}]',
+ '[{"data_id":"in_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","source_node":"task_cae_stiffness","is_mandatory":true,"parameters":{"file_path":"\\\\HPC\\CAE\\Solver\\model.k"}},{"data_id":"in_cap_scenario","name":"Cap 정보 및 시나리오","format_id":"fmt_cap_scenario","source_node":"task_hw","is_mandatory":true,"parameters":{}}]',
  '[]',
  '[{"data_id":"out_cap","name":"떨림 개선방안 피드백","format_id":"fmt_cap_scenario","target_node":"task_hw","sla_days":5,"parameters":{}}]'
 ),
