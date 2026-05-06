@@ -8,9 +8,9 @@ INSERT INTO products (product_id, name) VALUES
 
 -- Schema Registry (9개 포맷)
 INSERT INTO schema_registry (format_id, name, data_class, file_types, embedded_schema, description) VALUES
-  ('fmt_cad_model',       'CAD 3D 모델',            'binary_link', ARRAY['.stp','.step','.igs'], NULL, '기구 설계 산출 3D 형상 데이터'),
-  ('fmt_ecae_model',      'ECAE 모델',              'binary_link', ARRAY['.brd','.mcm'],         NULL, '실장솔루션 전자 CAE 설계 데이터'),
-  ('fmt_lsdyna_k',        'LS-DYNA K파일',          'binary_link', ARRAY['.k','.key'],           NULL, '세트 구조강성 해석용 솔버 입력 파일'),
+  ('fmt_mcad_model',      'MCAD 모델',            'binary_link', ARRAY['.stp','.step','.igs'], '{"file_path":"string"}', '기구 설계 산출 3D 형상 데이터'),
+  ('fmt_ecad_model',      'ECAD 모델',              'binary_link', ARRAY['.brd','.mcm'],         '{"file_path":"string"}', '실장솔루션 전자 CAD 설계 데이터'),
+  ('fmt_lsdyna_k',        'LS-DYNA K파일',          'binary_link', ARRAY['.k','.key'],           '{"file_path":"string"}', '세트 구조강성 해석용 솔버 입력 파일'),
   ('fmt_stiffness_model', '세트 강성 모델',          'binary_link', ARRAY['.k','.key'],           NULL, '세트 전체 강성 해석 모델'),
   ('fmt_strain_result',   '변형률 결과',             'embedded',    NULL, '{"pba_strain":"number","package_strain":"number","interposer_strain":"number"}', '낙하/충격 해석 산출 PBA 변형률'),
   ('fmt_sed_result',      'SED (Strain Energy Density)', 'embedded', NULL, '{"sed_value":"number","target_criteria":"string","pass_fail":"string"}', '열충격 해석 산출 변형에너지밀도'),
@@ -26,29 +26,29 @@ INSERT INTO nodes (node_id, product_id, meta, inputs, processes, outputs) VALUES
  '{"name":"기구 설계 팀","type":"component","owner":"기구설계 그룹","description":"제품 3D 기구물 설계"}',
  '[{"data_id":"in_redesign","name":"재설계 지시","format_id":"fmt_redesign_order","source_node":"task_hw","is_mandatory":false,"parameters":{}}]',
  '[]',
- '[{"data_id":"out_cad","name":"CAD 3D 모델","format_id":"fmt_cad_model","target_node":"task_cae_stiffness","sla_days":5,"parameters":{}}]'
+ '[{"data_id":"out_cad","name":"MCAD 모델","format_id":"fmt_mcad_model","target_node":"task_cae_stiffness","sla_days":5,"parameters":{"file_path":"\\\\NAS\\Design\\MCAD\\latest_model.stp"}}]'
 ),
 
 -- 2. 실장솔루션
 ('task_mnt', 'global',
- '{"name":"실장솔루션 그룹","type":"component","owner":"실장솔루션 그룹","description":"ECAE (Electrical CAE) 설계"}',
+ '{"name":"실장솔루션 그룹","type":"component","owner":"실장솔루션 그룹","description":"ECAD (Electrical CAD) 설계"}',
  '[{"data_id":"in_redesign","name":"PBA 재설계 지시","format_id":"fmt_redesign_order","source_node":"task_hw","is_mandatory":false,"parameters":{}}]',
  '[]',
- '[{"data_id":"out_ecae","name":"ECAE 모델","format_id":"fmt_ecae_model","target_node":"task_cae_stiffness","sla_days":3,"parameters":{}},{"data_id":"out_ballmap","name":"볼맵/스택업/두께 정보","format_id":"fmt_ballmap_stackup","target_node":["task_ai_thermal","task_ai_aponoff"],"sla_days":2,"parameters":{}}]'
+ '[{"data_id":"out_ecae","name":"ECAD 모델","format_id":"fmt_ecad_model","target_node":"task_cae_stiffness","sla_days":3,"parameters":{"file_path":"\\\\NAS\\Design\\ECAD\\latest_board.brd"}},{"data_id":"out_ballmap","name":"볼맵/스택업/두께 정보","format_id":"fmt_ballmap_stackup","target_node":["task_ai_thermal","task_ai_aponoff"],"sla_days":2,"parameters":{}}]'
 ),
 
 -- 3. 세트 CAE (구조강성)
 ('task_cae_stiffness', 'global',
  '{"name":"세트 CAE (구조강성)","type":"core","owner":"CAE 그룹","description":"구조강성 파트 전처리 단계"}',
- '[{"data_id":"in_cad","name":"CAD 3D 모델","format_id":"fmt_cad_model","source_node":"task_cad","is_mandatory":true,"parameters":{}},{"data_id":"in_ecae","name":"ECAE 모델","format_id":"fmt_ecae_model","source_node":"task_mnt","is_mandatory":true,"parameters":{}}]',
+ '[{"data_id":"in_cad","name":"MCAD 모델","format_id":"fmt_mcad_model","source_node":"task_cad","is_mandatory":true,"parameters":{"file_path":"\\\\NAS\\Design\\MCAD\\latest_model.stp"}},{"data_id":"in_ecae","name":"ECAD 모델","format_id":"fmt_ecad_model","source_node":"task_mnt","is_mandatory":true,"parameters":{"file_path":"\\\\NAS\\Design\\ECAD\\latest_board.brd"}}]',
  '[{"step_id":"p1","name":"모델링 단순화","metrics":{}},{"step_id":"p2","name":"물성 부여","metrics":{}}]',
- '[{"data_id":"out_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","target_node":["task_drop_sim","task_partial_impact"],"sla_days":7,"parameters":{}},{"data_id":"out_stiffness","name":"세트 강성 모델","format_id":"fmt_stiffness_model","target_node":["task_ai_aponoff","task_ai_cap"],"sla_days":7,"parameters":{}}]'
+ '[{"data_id":"out_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","target_node":["task_drop_sim","task_partial_impact"],"sla_days":7,"parameters":{"file_path":"\\\\HPC\\CAE\\Solver\\model.k"}},{"data_id":"out_stiffness","name":"세트 강성 모델","format_id":"fmt_stiffness_model","target_node":["task_ai_aponoff","task_ai_cap"],"sla_days":7,"parameters":{}}]'
 ),
 
 -- 4. 낙하 시뮬레이션
 ('task_drop_sim', 'global',
  '{"name":"낙하 시뮬레이션","type":"thread","owner":"CAE 그룹","description":"구조강성 파트 LS-DYNA 연산"}',
- '[{"data_id":"in_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","source_node":"task_cae_stiffness","is_mandatory":true,"parameters":{}}]',
+ '[{"data_id":"in_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","source_node":"task_cae_stiffness","is_mandatory":true,"parameters":{"file_path":"\\\\HPC\\CAE\\Solver\\model.k"}}]',
  '[]',
  '[{"data_id":"out_strain","name":"자유낙하 변형률","format_id":"fmt_strain_result","target_node":"task_hw","sla_days":5,"parameters":{}}]'
 ),
@@ -56,7 +56,7 @@ INSERT INTO nodes (node_id, product_id, meta, inputs, processes, outputs) VALUES
 -- 5. 부분 충격(외충) 시뮬레이션
 ('task_partial_impact', 'global',
  '{"name":"부분 충격(외충) 시뮬레이션","type":"thread","owner":"CAE 그룹","description":"구조강성 파트: 볼/실린더 타격 해석"}',
- '[{"data_id":"in_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","source_node":"task_cae_stiffness","is_mandatory":true,"parameters":{}}]',
+ '[{"data_id":"in_k","name":"세트 LS-DYNA K파일","format_id":"fmt_lsdyna_k","source_node":"task_cae_stiffness","is_mandatory":true,"parameters":{"file_path":"\\\\HPC\\CAE\\Solver\\model.k"}}]',
  '[]',
  '[{"data_id":"out_strain","name":"볼/실린더 타격 변형률","format_id":"fmt_strain_result","target_node":"task_hw","sla_days":5,"parameters":{}}]'
 ),
